@@ -1,0 +1,2 @@
+echo "java -cp $(pwd)/bin Xic \$@" > xic
+chmod +x xic
