@@ -110,7 +110,9 @@ dec_int_id = [A-Za-z_][A-Za-z_0-9]*
    
     /* Return the token SEMI declared in the class sym that was found. */
     ";"                { return symbol(sym.SEMI); }
-   
+    "use"              { return symbol(sym.USE); }
+    "if"               { return symbol(sym.IF); }
+    "else"             { return symbol(sym.ELSE); }
     /* Print the token found that was declared in the class sym and then
        return it. */
     "+"                { return symbol(sym.PLUS); }
@@ -119,6 +121,11 @@ dec_int_id = [A-Za-z_][A-Za-z_0-9]*
     "/"                { return symbol(sym.DIVIDE); }
     "("                { return symbol(sym.LPAREN); }
     ")"                { return symbol(sym.RPAREN); }
+    "{"                { return symbol(sym.LBRACE); }
+    "}"                { return symbol(sym.RBRACE); }    
+    "["                { return symbol(sym.LBRACKET); }
+    "]"                { return symbol(sym.RBRACKET); }
+    "="                { return symbol(sym.EQ); }
    
     /* If an integer is found print it out, return the token NUMBER
        that represents an integer and the value of the integer that is
@@ -129,7 +136,7 @@ dec_int_id = [A-Za-z_][A-Za-z_0-9]*
     /* If an identifier is found print it out, return the token ID
        that represents an identifier and the default value one that is
        given to all identifiers. */
-    {dec_int_id}       { return symbol(sym.ID, new Integer(1));}
+    {dec_int_id}       { return symbol(sym.ID, yytext());}
    
     /* Don't do anything if whitespace is found */
     {WhiteSpace}       { /* just skip what was found, do nothing */ }   
