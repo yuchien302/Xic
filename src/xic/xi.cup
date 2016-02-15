@@ -68,21 +68,24 @@ parser code {:
    Terminals that have no value are listed first and then terminals
    that do have an value, in this case an integer value, are listed on
    the next line down. */
-terminal           SEMI, PLUS, MINUS, MULTIPLY, DIVIDE, LPAREN, RPAREN;
-terminal Integer   NUMBER, ID;
-   
+terminal SEMI, PLUS, MINUS, MULTIPLY, DIVIDE;
+terminal EQ;
+terminal USE;
+terminal LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET;
+terminal IF, ELSE;
+
+terminal String ID;
+terminal Integer NUMBER;
+
 /* Non terminals used in the grammar section.  
 
    Non terminals that have an object value are listed first and then
    non terminals that have an integer value are listed.  An object
    value means that it can be any type, it isn't set to a specific
    type.  So it could be an Integer or a String or whatever. */
-non terminal Object    expr_list, expr_part;
-non terminal Object    expr, factor, term;
+non terminal Object program, expr_list, expr, use_stmt_list, use_stmt;
    
-
-/* -------------Precedence and Associatively of Terminals Section----------- */
-   
+      
 /*
   Precedence of non terminals could be defined here.  If you do define
   precedence here you won't need to worry about precedence in the
@@ -95,8 +98,13 @@ non terminal Object    expr, factor, term;
   precedence left PLUS, MINUS; 
   precedence left TIMES, DIVIDE; 
 */
+
+  precedence nonassoc ELSE;
+
+  precedence left EQ;   
   precedence left PLUS, MINUS;
   precedence left MULTIPLY, DIVIDE; 
+
 
 /* ----------------------------Grammar Section-------------------- */
    
@@ -115,20 +123,53 @@ non terminal Object    expr, factor, term;
                  | NUMBER
                  | ID     
 */
-   
-   expr      ::= NUMBER:n 
-                 {: RESULT = new NumAtom(n.intValue()); :}
-                 |
-                 expr:e1 MULTIPLY expr:e2
-                 {: RESULT = new BinaryExpr("*", e1, e2); :}
-                 |
-                 expr:e1 DIVIDE expr:e2
-                 {: RESULT = new BinaryExpr("/", e1, e2); :}
-                 |
-                 expr:e1 PLUS expr:e2
-                 {: RESULT = new BinaryExpr("+", e1, e2); :}
-                 |
-                 expr:e1 MINUS expr:e2
-                 {: RESULT = new BinaryExpr("-", e1, e2); :}
-                 ;
+start with program;
+
+program ::= use_stmt_list:ul expr_list:exprl
+            {: RESULT = new BinaryExpr("program", ul, exprl); :};
+
+use_stmt_list ::= use_stmt_list:ul use_stmt:u
+              {: ((ListExpr) ul).add(u); RESULT = ul; :}
+              |
+              {: RESULT = new ListExpr(); :}
+              ;
+
+use_stmt ::= USE ID:x
+             {: RESULT = new UnaryExpr("use", new IDAtom(x)); :};
+
+expr_list ::= expr_list:el expr:e
+              {: ((ListExpr) el).add(e); RESULT = el; :}
+              | 
+              {: RESULT = new ListExpr(); :}
+              ;
+
+expr ::= expr:e1 MULTIPLY expr:e2
+         {: RESULT = new BinaryExpr("*", e1, e2); :}
+         |
+         expr:e1 DIVIDE expr:e2
+         {: RESULT = new BinaryExpr("/", e1, e2); :}
+         |
+         expr:e1 PLUS expr:e2
+         {: RESULT = new BinaryExpr("+", e1, e2); :}
+         |
+         expr:e1 MINUS expr:e2
+         {: RESULT = new BinaryExpr("-", e1, e2); :}
+         |
+         NUMBER:n 
+         {: RESULT = new NumAtom(n.intValue()); :}
+         |
+         ID:x
+         {: RESULT = new IDAtom(x); :}
+         |
+         ID:x EQ expr:e  
+         {: RESULT = new BinaryExpr("=", new IDAtom(x), e); :}
+         | 
+         IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE ELSE LBRACE expr_list:alternative RBRACE
+         {: RESULT = new IFStmt(predicate, consequent, alternative); :}
+         | 
+         IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE
+         {: RESULT = new IFStmt(predicate, consequent); :}
+         ;
+         
+
 
