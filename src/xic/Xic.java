@@ -5,19 +5,20 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
 import org.apache.commons.cli.HelpFormatter;
 
 
 import java.util.Map;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 
-import xic.Lexer.Token;
-import xic.Lexer.TokenType;
+
 
 /**
  * @author yuchien
@@ -46,37 +47,26 @@ public class Xic {
 			String pathLexed = pathXi.substring(0,pathXi.length()-2)+"lexed";
 			
 			Reader fr = new FileReader(pathXi);
-			FileWriter fw = new FileWriter(pathLexed);
+//			FileWriter fw = new FileWriter(pathLexed);
 			
 			Lexer lexer = new Lexer(fr);
 			
-			Token tok = lexer.yylex();
-			while (tok != null){
-				int numLine = tok.getLine() + 1 ;
-				int numCol = tok.getCol() + 1; 
-				String lineVal = new String ();
-				if (tok.getType() == TokenType.ERROR){
-					lineVal = tok.getValue();
-					String s = String.format("%d:%d %s\n", numLine, numCol, lineVal);
-					fw.write(s);
-					break;
-				}
-				else if (tok.getType() == TokenType.SYMBOL ||tok.getType() == TokenType.KEYWORD){
-					lineVal = lexer.yytext();
-				}
-				else if (tok.getType() == TokenType.INTEGER) {
-					lineVal = tok.getType().toString().toLowerCase()+" "+ lexer.yytext();
-				}
-				else {
-					lineVal = tok.getType().toString().toLowerCase()+" "+ tok.getValue();
-				}
-				String s = String.format("%d:%d %s\n", numLine, numCol, lineVal);
-				fw.write(s); 
-//				System.out.print(s);
-				
-				tok = lexer.yylex();
+//			parser p = new parser(lexer, sf);
+			System.out.print(String.format("Compiling: %s\n", pathXi));
+			try {
+
+				parser p = new parser(lexer);
+	            System.out.println(p.parse().value);								
+
+//	            for (Symbol sym = lexer.next_token(); sym.sym != 0; sym = lexer.next_token()) {
+//	                System.out.println(String.format("(%d, %d) | Token %s: %s ", 
+//	                				sym.left, sym.right, sym, sym.value));
+//	            }
+
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			fw.close();
+						
 		} catch (ParseException e) {
 			System.out.println( "Unexpected exception:" + e.getMessage() );
 		}
