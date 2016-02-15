@@ -6,6 +6,8 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import java_cup.runtime.Symbol;
+
 import org.apache.commons.cli.HelpFormatter;
 
 
