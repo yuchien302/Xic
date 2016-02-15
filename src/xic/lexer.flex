@@ -1,196 +1,141 @@
+/*
+  This example comes from a short article series in the Linux 
+  Gazette by Richard A. Sevenich and Christopher Lopes, titled
+  "Compiler Construction Tools". The article series starts at
+
+  http://www.linuxgazette.com/issue39/sevenich.html
+
+  Small changes and updates to newest JFlex+Cup versions 
+  by Gerwin Klein
+*/
+
+/*
+  Commented By: Christopher Lopes
+  File Name: lcalc.flex
+  To Create: > jflex lcalc.flex
+
+  and then after the parser is created
+  > javac Lexer.java
+*/
+   
+/* --------------------------Usercode Section------------------------ */
 package xic;
 
+import java_cup.runtime.*;
+      
 %%
+   
+/* -----------------Options and Declarations Section----------------- */
+   
+/* 
+   The name of the class JFlex will create will be Lexer.
+   Will write the code to the file Lexer.java. 
+*/
 %class Lexer
-%unicode
+
+/*
+  The current line number can be accessed with the variable yyline
+  and the current column number with the variable yycolumn.
+*/
 %line
 %column
-%type Token
-
-%{
-public enum TokenType {
-	ID, INTEGER, CHARACTER, STRING, KEYWORD, SYMBOL, ERROR
-}
-public enum Subtype {
-	LBRACE, RBRACE, LPAREN, RPAREN, LBRACKET, RBRACKET, COMMA,
-	COLON, SEMI, EQ, EQEQ, LEQ, GEQ, NEQ, PLUS, MINUS, NEGATION, TIMES, DIV, MOD,
-	LANGLE, RANGLE, AND, OR, USE, IF, WHILE, ELSE, RETURN, LENGTH, TRUE, FALSE, INT, BOOL, UNDERSCORE
-}
-public class Token {
-	
-	private TokenType ttype;
-	private String value;
-	private int intVal;
-	private int column, line;
-	private Subtype stype;
-	
-	
-	
-	public Token(TokenType type, Subtype s, int l, int c){
-		ttype = type;
-		stype = s;
-		column = c;
-		line = l;
-	}
-	public Token(TokenType type, String val, int l, int c) {
-		ttype = type;
-		value = val;
-		column = c;
-		line = l;
-	}
-	public Token(TokenType type, int i, int l, int c) {
-		ttype = type;
-		intVal = i;
-		column = c;
-		line = l;
-	}
-	
-	public TokenType getType() {
-		return ttype;
-	}
-	public int getCol() {
-		return column;
-	}
-	public int getLine() {
-		return line;
-	}
-	public Subtype getSubtype() {
-		return stype;
-	}
-	public String getValue() {
-		return value;
-	}
-	public int getIntValue() {
-		return intVal;
-	}
-}
-
-
-	StringBuffer string = new StringBuffer();
-	int line = 0;
-	int col = 0;
-	private Token token(TokenType type, Subtype s) {
-		return new Token(type, s, yyline, yycolumn);
-	}
-	private Token token(TokenType type, String value) {
-		if(type == TokenType.STRING || type == TokenType.CHARACTER || type == TokenType.ERROR) {
-			return new Token(type, value, line, col);
-		}
-		else return new Token(type, value, yyline, yycolumn);
-	}
-	private Token token(TokenType type, int value) {
-		return new Token(type, value, yyline, yycolumn);
-	}
-	
+    
+/* 
+   Will switch to a CUP compatibility mode to interface with a CUP
+   generated parser.
+*/
+%cup
+   
+/*
+  Declarations
+   
+  Code between %{ and %}, both of which must be at the beginning of a
+  line, will be copied letter to letter into the lexer class source.
+  Here you declare member variables and functions that are used inside
+  scanner actions.  
+*/
+%{   
+    /* To create a new java_cup.runtime.Symbol with information about
+       the current token, the token will have no value in this
+       case. */
+    private Symbol symbol(int type) {
+        return new Symbol(type, yyline, yycolumn);
+    }
+    
+    /* Also creates a new java_cup.runtime.Symbol with information
+       about the current token, but this object has a value. */
+    private Symbol symbol(int type, Object value) {
+        return new Symbol(type, yyline, yycolumn, value);
+    }
 %}
+   
 
-
+/*
+  Macro Declarations
+  
+  These declarations are regular expressions that will be used latter
+  in the Lexical Rules Section.  
+*/
+   
+/* A line terminator is a \r (carriage return), \n (line feed), or
+   \r\n. */
 LineTerminator = \r|\n|\r\n
-InputCharacter = [^\r\n]
-WhiteSpace = {LineTerminator} | [ \t\f]
-
-Comment = "//" {InputCharacter}*
-Integer = [1-9] [0-9]* | 0
-HexNumber = [0-9A-F]+
-
-Letter = [a-zA-Z]
-Identifier = {Letter} [a-zA-Z0-9_']*
-
-%state STRING
-%state CHAR
-
+   
+/* White space is a line terminator, space, tab, or line feed. */
+WhiteSpace     = {LineTerminator} | [ \t\f]
+   
+/* A literal integer is is a number beginning with a number between
+   one and nine followed by zero or more numbers between zero and nine
+   or just a zero.  */
+dec_int_lit = 0 | [1-9][0-9]*
+   
+/* A identifier integer is a word beginning a letter between A and
+   Z, a and z, or an underscore followed by zero or more letters
+   between A and Z, a and z, zero and nine, or an underscore. */
+dec_int_id = [A-Za-z_][A-Za-z_0-9]*
+   
 %%
-
+/* ------------------------Lexical Rules Section---------------------- */
+   
+/*
+   This section contains regular expressions and actions, i.e. Java
+   code, that will be executed when the scanner matches the associated
+   regular expression. */
+   
+   /* YYINITIAL is the state at which the lexer begins scanning.  So
+   these regular expressions will only be matched if the scanner is in
+   the start state YYINITIAL. */
+   
 <YYINITIAL> {
-	/*keywords*/
-	"use" 							{ return token(TokenType.KEYWORD, Subtype.USE); }
-	"if"							{ return token(TokenType.KEYWORD, Subtype.IF); }
-	"while"							{ return token(TokenType.KEYWORD, Subtype.WHILE); }
-	"else"							{ return token(TokenType.KEYWORD, Subtype.ELSE); }
-	"return"						{ return token(TokenType.KEYWORD, Subtype.RETURN); }
-	"length"						{ return token(TokenType.KEYWORD, Subtype.LENGTH); }
-	"true"							{ return token(TokenType.KEYWORD, Subtype.TRUE); }
-	"false"							{ return token(TokenType.KEYWORD, Subtype.FALSE); }
-	"int"							{ return token(TokenType.KEYWORD, Subtype.INT); }
-	"bool" 							{ return token(TokenType.KEYWORD, Subtype.BOOL); }
-	
-	/*symbols*/
-	"="								{ return token(TokenType.SYMBOL, Subtype.EQ); }
-	"<="							{ return token(TokenType.SYMBOL, Subtype.LEQ); }
-	">="							{ return token(TokenType.SYMBOL, Subtype.GEQ); }
-	"=="							{ return token(TokenType.SYMBOL, Subtype.EQEQ); }
-	"!="							{ return token(TokenType.SYMBOL, Subtype.NEQ); }
-	"["								{ return token(TokenType.SYMBOL, Subtype.LBRACE); }
-	"]"								{ return token(TokenType.SYMBOL, Subtype.RBRACE); }
-	"("								{ return token(TokenType.SYMBOL, Subtype.LPAREN); }
-	")"								{ return token(TokenType.SYMBOL, Subtype.RPAREN); }
-	"{"								{ return token(TokenType.SYMBOL, Subtype.LBRACKET); }
-	"}"								{ return token(TokenType.SYMBOL, Subtype.RBRACKET); }
-	":"								{ return token(TokenType.SYMBOL, Subtype.COLON); }
-	";"								{ return token(TokenType.SYMBOL, Subtype.SEMI); }
-	"+"								{ return token(TokenType.SYMBOL, Subtype.PLUS); }
-	"-"								{ return token(TokenType.SYMBOL, Subtype.MINUS); }
-	"*"								{ return token(TokenType.SYMBOL, Subtype.TIMES); }
-	"/"								{ return token(TokenType.SYMBOL, Subtype.DIV); }
-	"%"								{ return token(TokenType.SYMBOL, Subtype.MOD); }
-	"!"								{ return token(TokenType.SYMBOL, Subtype.NEGATION); }
-	"<"								{ return token(TokenType.SYMBOL, Subtype.LANGLE); }
-	">"								{ return token(TokenType.SYMBOL, Subtype.RANGLE); }
-	"&"								{ return token(TokenType.SYMBOL, Subtype.AND); }
-	"|"								{ return token(TokenType.SYMBOL, Subtype.OR); }
-	"_"								{ return token(TokenType.SYMBOL, Subtype.UNDERSCORE); }
-	","								{ return token(TokenType.SYMBOL, Subtype.COMMA); }
-	
-	{WhiteSpace}					{ /* ignore */ }
-	{Comment} 						{ /* ignore */ }
-	
-	{Integer}						{ return token(TokenType.INTEGER, Integer.parseInt(yytext())); }
-	{Identifier}					{ return token(TokenType.ID, yytext()); }
-	
-	\"								{ string.setLength(0); line = yyline; col = yycolumn; yybegin(STRING); }
-	\'								{ string.setLength(0); line = yyline; col = yycolumn; yybegin(CHAR); }
+   
+    /* Return the token SEMI declared in the class sym that was found. */
+    ";"                { return symbol(sym.SEMI); }
+   
+    /* Print the token found that was declared in the class sym and then
+       return it. */
+    "+"                { return symbol(sym.PLUS); }
+    "-"                { return symbol(sym.MINUS); }
+    "*"                { return symbol(sym.MULTIPLY); }
+    "/"                { return symbol(sym.DIVIDE); }
+    "("                { return symbol(sym.LPAREN); }
+    ")"                { return symbol(sym.RPAREN); }
+   
+    /* If an integer is found print it out, return the token NUMBER
+       that represents an integer and the value of the integer that is
+       held in the string yytext which will get turned into an integer
+       before returning */
+    {dec_int_lit}      { return symbol(sym.NUMBER, new Integer(yytext())); }
+   
+    /* If an identifier is found print it out, return the token ID
+       that represents an identifier and the default value one that is
+       given to all identifiers. */
+    {dec_int_id}       { return symbol(sym.ID, new Integer(1));}
+   
+    /* Don't do anything if whitespace is found */
+    {WhiteSpace}       { /* just skip what was found, do nothing */ }   
 }
 
-<STRING> {
-	\"								{ yybegin(YYINITIAL); 
-									  return token(TokenType.STRING, string.toString()); }
-									  
-	[^\n\r\"\\]+					{ string.append(yytext()); }
-	\\t 							{ string.append("\\t"); }
-	\\n 							{ string.append("\\n"); }
-	\\r 							{ string.append("\\r"); }
-	\\\" 							{ string.append("\""); }
-	\\\\							{ string.append('\\'); }
-	\\0x {HexNumber}				{ int k = Integer.parseInt(yytext().substring(3), 16);
-									  if(k > 31 && k < 127) string.append((char) k);
-									  else string.append(yytext()); }
-	\\x {HexNumber}					{ int k = Integer.parseInt(yytext().substring(2), 16);
-									  if(k > 31 && k < 127) string.append((char) k);
-									  else string.append(yytext()); }
-	\\ {Integer}					{ int k = Integer.parseInt(yytext().substring(1));
-									  if(k > 31 && k < 127) string.append((char) k);
-									  else string.append(yytext()); }
-}
 
-<CHAR> {
-	\'								{ yybegin(YYINITIAL);
-									  if(string.length() == 0) return token(TokenType.ERROR, "error:empty character literal");
-									  return token(TokenType.CHARACTER, string.toString()); }
-	
-	[^\n\r\'\\]+					{ string.append(yytext()); }
-	\\t								{ string.append("\\t"); }
-	\\n 							{ string.append("\\n"); }
-	\\r 							{ string.append("\\r"); }
-	\\\" 							{ string.append("\""); }
-	\\								{ string.append('\\'); }
-	\\0x {HexNumber}				{ int k = Integer.parseInt(yytext().substring(3), 16);
-									  if(k > 31 && k < 127) string.append((char) k);
-									  else string.append(yytext()); }
-	\\ {Integer}					{ int k = Integer.parseInt(yytext().substring(1));
-									  if(k > 31 && k < 127) string.append((char) k);
-									  else string.append(yytext()); }
-}
-
-/* error fallback */
-[^] 								{ return token(TokenType.ERROR, "Illegal character <"+yytext()+">"); }
-
+/* No token was found for the input so through an error.  Print out an
+   Illegal character message with the illegal character that was found. */
+[^]                    { throw new Error("Illegal character <"+yytext()+">"); }
