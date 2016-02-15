@@ -1,3 +1,5 @@
-mvn package
+# mvn package
+./pa2_student/cup -destdir src/xic/ src/xic/xi.cup
+jflex src/xic/lexer.flex
 echo "java -cp $(pwd)/target/Xic-0.0.1-SNAPSHOT.jar xic.Xic \$@" > xic
 chmod +x xic
