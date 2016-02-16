@@ -68,14 +68,16 @@ parser code {:
    Terminals that have no value are listed first and then terminals
    that do have an value, in this case an integer value, are listed on
    the next line down. */
-terminal SEMI, PLUS, MINUS, MULTIPLY, DIVIDE;
-terminal EQ;
-terminal USE;
+terminal USE, IF, ELSE, WHILE, RETURN, LENGTH;
+terminal TRUE, FALSE, INT, BOOL;
+terminal SEMI, COLON, COMMA, UNDERSCORE;
+terminal PLUS, MINUS, MULTIPLY, DIVIDE, MOD;
+terminal AND, OR, NEGATE;
+terminal EQ, LT, GT, EQEQ, LEQ, GEQ, NEQ;
 terminal LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET;
-terminal IF, ELSE;
 
-terminal String ID;
-terminal Integer NUMBER;
+terminal String ID, STRING, CHARACTER;
+terminal Integer INTEGER;
 
 /* Non terminals used in the grammar section.  
 
@@ -83,7 +85,7 @@ terminal Integer NUMBER;
    non terminals that have an integer value are listed.  An object
    value means that it can be any type, it isn't set to a specific
    type.  So it could be an Integer or a String or whatever. */
-non terminal Object program, expr_list, expr, use_stmt_list, use_stmt;
+non terminal SExp program, expr_list, expr, use_stmt_list, use_stmt;
    
       
 /*
@@ -101,75 +103,72 @@ non terminal Object program, expr_list, expr, use_stmt_list, use_stmt;
 
   precedence nonassoc ELSE;
 
-  precedence left EQ;   
+  precedence left EQ, LT, GT, LEQ, GEQ;
   precedence left PLUS, MINUS;
-  precedence left MULTIPLY, DIVIDE; 
+  precedence left MULTIPLY, DIVIDE, MOD; 
 
 
 /* ----------------------------Grammar Section-------------------- */
    
 /* The grammar for our parser.
    
-   expr_list ::=   expr_list expr_part
-                 | expr_part
-   expr_part ::=   expr SEMI
-   expr      ::=   expr PLUS factor
-                 | expr MINUS factor
-                 | factor
-   factor    ::=   factor TIMES term
-                 | factor DIVIDE term
-                 | term
-   term     ::=    LPAREN expr RPAREN
-                 | NUMBER
-                 | ID     
+   program ::= use_stmt_list expr_list
+
 */
 start with program;
 
 program ::= use_stmt_list:ul expr_list:exprl
-            {: RESULT = new BinaryExpr("program", ul, exprl); :};
+            {: RESULT = new ListSExp(ul, exprl); :};
 
 use_stmt_list ::= use_stmt_list:ul use_stmt:u
-              {: ((ListExpr) ul).add(u); RESULT = ul; :}
+              {: ((ListSExp) ul).add(u); RESULT = ul; :}
               |
-              {: RESULT = new ListExpr(); :}
+              {: RESULT = new ListSExp(); :}
               ;
 
 use_stmt ::= USE ID:x
-             {: RESULT = new UnaryExpr("use", new IDAtom(x)); :};
+             {: RESULT = new ListSExp("use", new AtomSExp(x)); :};
 
 expr_list ::= expr_list:el expr:e
-              {: ((ListExpr) el).add(e); RESULT = el; :}
+              {: ((ListSExp) el).add(e); RESULT = el; :}
               | 
-              {: RESULT = new ListExpr(); :}
+              {: RESULT = new ListSExp(); :}
               ;
 
-expr ::= expr:e1 MULTIPLY expr:e2
-         {: RESULT = new BinaryExpr("*", e1, e2); :}
-         |
-         expr:e1 DIVIDE expr:e2
-         {: RESULT = new BinaryExpr("/", e1, e2); :}
-         |
-         expr:e1 PLUS expr:e2
-         {: RESULT = new BinaryExpr("+", e1, e2); :}
+expr ::= expr:e1 PLUS expr:e2
+         {: RESULT = new ListSExp("+", e1, e2); :}
          |
          expr:e1 MINUS expr:e2
-         {: RESULT = new BinaryExpr("-", e1, e2); :}
+         {: RESULT = new ListSExp("-", e1, e2); :}
          |
-         NUMBER:n 
-         {: RESULT = new NumAtom(n.intValue()); :}
+         expr:e1 MULTIPLY expr:e2
+         {: RESULT = new ListSExp("*", e1, e2); :}
          |
-         ID:x
-         {: RESULT = new IDAtom(x); :}
+         expr:e1 DIVIDE expr:e2
+         {: RESULT = new ListSExp("/", e1, e2); :}
          |
+         expr:e1 MOD expr:e2
+         {: RESULT = new ListSExp("%", e1, e2); :}
+         |         
          ID:x EQ expr:e  
-         {: RESULT = new BinaryExpr("=", new IDAtom(x), e); :}
+         {: RESULT = new ListSExp("=", new AtomSExp(x), e); :}
          | 
          IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE ELSE LBRACE expr_list:alternative RBRACE
-         {: RESULT = new IFStmt(predicate, consequent, alternative); :}
+         {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
          | 
          IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE
-         {: RESULT = new IFStmt(predicate, consequent); :}
+         {: RESULT = new ListSExp("if", predicate, consequent); :}
+         |
+         expr:x SEMI
+         {: RESULT = x; :}
+         |
+         INTEGER:n 
+         {: RESULT = new AtomSExp(Integer.toString(n)); :}
+         |
+         ID:x
+         {: RESULT = new AtomSExp(x); :}
          ;
+
          
 
 
