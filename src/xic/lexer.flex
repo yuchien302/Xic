@@ -6,10 +6,11 @@ import java_cup.runtime.ComplexSymbolFactory.Location;
 
 %%   
 %class Lexer
+%unicode
 %line
 %column
 %cup
-%unicode
+
    
 /*
   Declarations
@@ -39,6 +40,8 @@ import java_cup.runtime.ComplexSymbolFactory.Location;
     // }
 
     StringBuffer string = new StringBuffer();
+    int line = 0;
+    int col = 0;
     // public Lexer(java.io.Reader in, ComplexSymbolFactory sf){
     //   this(in);
     //   symbolFactory = sf;
@@ -55,8 +58,8 @@ import java_cup.runtime.ComplexSymbolFactory.Location;
         return symbolFactory.newSymbol(name, sym, left, right,val);
     }
     private Symbol symbol(String name, int sym, Object val, int buflength) {
-        Location left = new Location(yyline+1,yycolumn+yylength()-buflength,yychar+yylength()-buflength);
-        Location right= new Location(yyline+1,yycolumn+yylength(), yychar+yylength());
+        Location left = new Location(yyline+1, col+1, yychar+yylength()-buflength);
+        Location right= new Location(yyline+1, yycolumn+yylength(), yychar+yylength());
         return symbolFactory.newSymbol(name, sym, left, right,val);
     }
     private void error(String message) {
@@ -170,8 +173,8 @@ Identifier = {Letter} [a-zA-Z0-9_']*
     {WhiteSpace}       { /* ignore */ }
     {Comment}          { /* ignore */ }  
 
-    \"                { string.setLength(0); yybegin(STRING); }
-    \'                { string.setLength(0); yybegin(CHAR); }
+    \"                { string.setLength(0); line = yyline; col = yycolumn; yybegin(STRING); }
+    \'                { string.setLength(0); line = yyline; col = yycolumn; yybegin(CHAR); }
 }
 
 <STRING> {
@@ -197,8 +200,8 @@ Identifier = {Letter} [a-zA-Z0-9_']*
 
 <CHAR> {
   \'                { yybegin(YYINITIAL);
-                      if(string.length() == 0) return symbol("error", sym.error, "error:empty character literal");
-                      return symbol("char", sym.CHARACTER, string.toString(), string.length()+1); }
+                      if(string.length() == 0) return symbol("error", sym.error, "empty character literal", 0);
+                      return symbol("character", sym.CHARACTER, string.toString(), string.length()+1); }
   
   [^\n\r\'\\]+      { string.append(yytext()); }
   \\t               { string.append("\\t"); }
