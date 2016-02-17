@@ -1,11 +1,15 @@
 package xic;
-import java_cup.runtime.*;
-      
+
+import java_cup.runtime.Symbol;
+import java_cup.runtime.ComplexSymbolFactory;
+import java_cup.runtime.ComplexSymbolFactory.Location;
+
 %%   
 %class Lexer
 %line
 %column
 %cup
+%unicode
    
 /*
   Declarations
@@ -16,21 +20,53 @@ import java_cup.runtime.*;
   scanner actions.  
 */
 %{   
-    StringBuffer string = new StringBuffer();
-    /* To create a new java_cup.runtime.Symbol with information about
-       the current token, the token will have no value in this
-       case. */
-    private Symbol symbol(int type) {
-        return new Symbol(type, yyline, yycolumn);
-    }
     
-    /* Also creates a new java_cup.runtime.Symbol with information
-       about the current token, but this object has a value. */
-    private Symbol symbol(int type, Object value) {
-        return new Symbol(type, yyline, yycolumn, value);
+    // StringBuffer string = new StringBuffer();
+    // /* To create a new java_cup.runtime.Symbol with information about
+    //    the current token, the token will have no value in this
+    //    case. */
+    // private Symbol symbol(String name, int type) {
+    //     return new Symbol(name, type, yyline, yycolumn);
+    // }
+
+    // private Symbol symbol(int type) {
+    //     return new Symbol(type, yyline, yycolumn);
+    // }    
+    // /* Also creates a new java_cup.runtime.Symbol with information
+    //    about the current token, but this object has a value. */
+    // private Symbol symbol(int type, Object value) {
+    //     return new Symbol(type, yyline, yycolumn, value);
+    // }
+
+    StringBuffer string = new StringBuffer();
+    // public Lexer(java.io.Reader in, ComplexSymbolFactory sf){
+    //   this(in);
+    //   symbolFactory = sf;
+    // }
+    // ComplexSymbolFactory symbolFactory;
+    ComplexSymbolFactory symbolFactory = new ComplexSymbolFactory();
+    private Symbol symbol(String name, int sym) {
+        return symbolFactory.newSymbol(name, sym, new Location(yyline+1,yycolumn+1,yychar), new Location(yyline+1,yycolumn+yylength(),yychar+yylength()));
+    }
+
+    private Symbol symbol(String name, int sym, Object val) {
+        Location left = new Location(yyline+1,yycolumn+1,yychar);
+        Location right= new Location(yyline+1,yycolumn+yylength(), yychar+yylength());
+        return symbolFactory.newSymbol(name, sym, left, right,val);
+    }
+    private Symbol symbol(String name, int sym, Object val, int buflength) {
+        Location left = new Location(yyline+1,yycolumn+yylength()-buflength,yychar+yylength()-buflength);
+        Location right= new Location(yyline+1,yycolumn+yylength(), yychar+yylength());
+        return symbolFactory.newSymbol(name, sym, left, right,val);
+    }
+    private void error(String message) {
+      System.out.println("Error at line "+(yyline+1)+", column "+(yycolumn+1)+" : "+message);
     }
 %}
    
+%eofval{
+     return symbolFactory.newSymbol("EOF", sym.EOF, new Location(yyline+1,yycolumn+1,yychar), new Location(yyline+1,yycolumn+1,yychar+1));
+%eofval}
 
 /*
   Macro Declarations
@@ -64,7 +100,7 @@ Integer = [1-9] [0-9]* | 0
 HexNumber = [0-9A-F]+
 
 Letter = [a-zA-Z]
-Identifier = {Letter} [a-zA-Z0-9_]*
+Identifier = {Letter} [a-zA-Z0-9_']*
 
 %state STRING
 %state CHAR
@@ -83,62 +119,64 @@ Identifier = {Letter} [a-zA-Z0-9_]*
 <YYINITIAL> {
 
     /* Keywords */
-    "use"              { return symbol(sym.USE); }
-    "if"               { return symbol(sym.IF); }
-    "else"             { return symbol(sym.ELSE); }
-    "while"            { return symbol(sym.WHILE); }
-    "return"           { return symbol(sym.RETURN); }
-    "length"           { return symbol(sym.LENGTH); }
+    "use"              { return symbol("use", sym.USE); }
+    "if"               { return symbol("if", sym.IF); }
+    "else"             { return symbol("else", sym.ELSE); }
+    "while"            { return symbol("while", sym.WHILE); }
+    "return"           { return symbol("return", sym.RETURN); }
+    "length"           { return symbol("length", sym.LENGTH); }
     
     /* primitive types */
-    "true"             { return symbol(sym.TRUE); }
-    "false"            { return symbol(sym.FALSE); }
-    "int"              { return symbol(sym.INT); }
-    "bool"             { return symbol(sym.BOOL); }    
+    "true"             { return symbol("true", sym.TRUE); }
+    "false"            { return symbol("false", sym.FALSE); }
+    "int"              { return symbol("int", sym.INT); }
+    "bool"             { return symbol("bool", sym.BOOL); }    
 
 
-    ";"                { return symbol(sym.SEMI); }
-    ":"                { return symbol(sym.COLON); }
-    ","                { return symbol(sym.COMMA); }
-    "_"                { return symbol(sym.UNDERSCORE); }
+    ";"                { return symbol(";", sym.SEMI); }
+    ":"                { return symbol(":", sym.COLON); }
+    ","                { return symbol(",", sym.COMMA); }
+    "_"                { return symbol("_", sym.UNDERSCORE); }
 
-    "+"                { return symbol(sym.PLUS); }
-    "-"                { return symbol(sym.MINUS); }
-    "*"                { return symbol(sym.MULTIPLY); }
-    "/"                { return symbol(sym.DIVIDE); }
-    "%"                { return symbol(sym.MOD); }
+    "+"                { return symbol("+", sym.PLUS); }
+    "-"                { return symbol("-", sym.MINUS); }
+    "*"                { return symbol("*", sym.MULTIPLY); }
+    "/"                { return symbol("/", sym.DIVIDE); }
+    "%"                { return symbol("%", sym.MOD); }
     
-    "&"                { return symbol(sym.AND); }
-    "|"                { return symbol(sym.OR); }
-    "!"                { return symbol(sym.NEGATE); }
+    "&"                { return symbol("&", sym.AND); }
+    "|"                { return symbol("|", sym.OR); }
+    "!"                { return symbol("!", sym.NEGATE); }
 
-    "="                { return symbol(sym.EQ); }
-    "<"                { return symbol(sym.LT); }
-    ">"                { return symbol(sym.GT); }    
-    "=="               { return symbol(sym.EQEQ); }
-    "<="               { return symbol(sym.LEQ); }
-    ">="               { return symbol(sym.GEQ); }
-    "!="               { return symbol(sym.NEQ); }
+    "="                { return symbol("=", sym.EQ); }
+    "<"                { return symbol("<", sym.LT); }
+    ">"                { return symbol(">", sym.GT); }    
+    "=="               { return symbol("==", sym.EQEQ); }
+    "<="               { return symbol("<=", sym.LEQ); }
+    ">="               { return symbol(">=", sym.GEQ); }
+    "!="               { return symbol("!=", sym.NEQ); }
         
-    "("                { return symbol(sym.LPAREN); }
-    ")"                { return symbol(sym.RPAREN); }
-    "{"                { return symbol(sym.LBRACE); }
-    "}"                { return symbol(sym.RBRACE); }    
-    "["                { return symbol(sym.LBRACKET); }
-    "]"                { return symbol(sym.RBRACKET); }
+    "("                { return symbol("(", sym.LPAREN); }
+    ")"                { return symbol(")", sym.RPAREN); }
+    "{"                { return symbol("{", sym.LBRACE); }
+    "}"                { return symbol("}", sym.RBRACE); }    
+    "["                { return symbol("[", sym.LBRACKET); }
+    "]"                { return symbol("]", sym.RBRACKET); }
 
-    {Integer}          { return symbol(sym.INTEGER, new Integer(yytext())); }
-    {Identifier}       { return symbol(sym.ID, yytext());}
+    {Integer}          { return symbol("integer", sym.INTEGER, new Integer(yytext())); }
+    {Identifier}       { return symbol("id", sym.ID, yytext());}
    
     /* Don't do anything if whitespace is found */
     {WhiteSpace}       { /* ignore */ }
     {Comment}          { /* ignore */ }  
 
+    \"                { string.setLength(0); yybegin(STRING); }
+    \'                { string.setLength(0); yybegin(CHAR); }
 }
 
 <STRING> {
   \"                { yybegin(YYINITIAL); 
-                    return symbol(sym.STRING, string.toString()); }
+                    return symbol("string", sym.STRING, string.toString(), string.length()+1); }
                     
   [^\n\r\"\\]+      { string.append(yytext()); }
   \\t               { string.append("\\t"); }
@@ -159,8 +197,8 @@ Identifier = {Letter} [a-zA-Z0-9_]*
 
 <CHAR> {
   \'                { yybegin(YYINITIAL);
-                      if(string.length() == 0) return symbol(sym.error, "error:empty character literal");
-                      return symbol(sym.CHARACTER, string.toString()); }
+                      if(string.length() == 0) return symbol("error", sym.error, "error:empty character literal");
+                      return symbol("char", sym.CHARACTER, string.toString(), string.length()+1); }
   
   [^\n\r\'\\]+      { string.append(yytext()); }
   \\t               { string.append("\\t"); }
