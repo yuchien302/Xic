@@ -29,6 +29,7 @@ public class Xic {
 		options.addOption( "h", "help", false, "Print a synopsis of options" );
 		options.addOption( "l", "lex", false, "Generate output from lexical analysis" );
 		options.addOption( "p", "parse", false, "Generate output from syntactic analysis" );
+		options.addOption( "v", "verbose", false, "Be extra verbose" );
 
 		CommandLine commandLine = parser.parse(options, args);
 		final String[] remainingArguments = commandLine.getArgs();
@@ -44,23 +45,26 @@ public class Xic {
 			System.out.print(String.format("Compiling: %s\n", pathXi));				
 
 			if(commandLine.hasOption("l")) {
-				
 				Reader fr = new FileReader(pathXi);
 				Lexer lexer = new Lexer(fr);
 				FileWriter fw = new FileWriter(pathLexed);
 	            for (ComplexSymbol symbol = (ComplexSymbol) lexer.next_token(); symbol.sym != 0; symbol = (ComplexSymbol) lexer.next_token()) {
 	            	String line = String.format("%d:%d %s", symbol.getLeft().getLine(), symbol.getLeft().getColumn(), symbol.getName());
+	            	if(symbol.sym == sym.error){
+	            		line += ":" + symbol.value() + "\n";
+	            		if(commandLine.hasOption("v")){ System.out.print(line); }
+	            		fw.write(line);
+	            		break;
+	            	}
 	            	if(symbol.value() != null){
 	            		line += " " + symbol.value() + "\n";
 	            	} else {
 	            		line += "\n";
 	            	}
-	            	System.out.print(line);
+	            	if(commandLine.hasOption("v")){ System.out.print(line); } 
 	            	fw.write(line);
 	            }
-	            
 	            fw.close();
-	            
 			} 
 			
 			if(commandLine.hasOption("p")) {
@@ -69,7 +73,7 @@ public class Xic {
 				FileWriter fw = new FileWriter(pathParsed);
 				parser p = new parser(lexer);
 				String program = p.parse().value.toString();
-	            System.out.println(program);
+				if(commandLine.hasOption("v")){ System.out.print(program); } 
 				fw.write(program);
 	            fw.close();
 			}	
