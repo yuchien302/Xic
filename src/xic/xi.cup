@@ -68,7 +68,7 @@ parser code {:
    Terminals that have no value are listed first and then terminals
    that do have an value, in this case an integer value, are listed on
    the next line down. */
-terminal USE, IF, ELSE, WHILE, RETURN, LENGTH;
+terminal USE, IF, ELSE, WHILE, RETURN, LENGTH; 
 terminal TRUE, FALSE, INT, BOOL;
 terminal SEMI, COLON, COMMA, UNDERSCORE;
 terminal PLUS, MINUS, MULTIPLY, DIVIDE, MOD;
@@ -85,8 +85,8 @@ terminal Integer INTEGER;
    non terminals that have an integer value are listed.  An object
    value means that it can be any type, it isn't set to a specific
    type.  So it could be an Integer or a String or whatever. */
-non terminal SExp program, expr_list, expr, use_stmt_list, use_stmt;
-   
+non terminal SExp program, expr_list, expr, block_expr_list, use_stmt_list, use_stmt, func_list, func;
+non terminal SExp decl_list, decl, type;   
       
 /*
   Precedence of non terminals could be defined here.  If you do define
@@ -117,17 +117,21 @@ non terminal SExp program, expr_list, expr, use_stmt_list, use_stmt;
 */
 start with program;
 
-program ::= use_stmt_list:ul expr_list:exprl
-            {: RESULT = new ListSExp(ul, exprl); :};
+program ::= use_stmt_list:ul func_list:funcl
+            {: RESULT = new ListSExp(ul, funcl); :};
 
 use_stmt_list ::= use_stmt_list:ul use_stmt:u
-              {: ((ListSExp) ul).add(u); RESULT = ul; :}
-              |
-              {: RESULT = new ListSExp(); :}
-              ;
+                  {: ((ListSExp) ul).add(u); RESULT = ul; :}
+                  |
+                  {: RESULT = new ListSExp(); :}
+                  ;
 
 use_stmt ::= USE ID:x
              {: RESULT = new ListSExp("use", new AtomSExp(x)); :};
+
+block_expr_list ::= LBRACE expr_list:el RBRACE
+                    {: RESULT = el; :}
+                    ;
 
 expr_list ::= expr_list:el expr:e
               {: ((ListSExp) el).add(e); RESULT = el; :}
@@ -169,6 +173,52 @@ expr ::= expr:e1 PLUS expr:e2
          {: RESULT = new AtomSExp(x); :}
          ;
 
+decl_list ::= decl_list:dl COMMA decl:d 
+	          {: ((ListSExp) dl).add(d); RESULT = dl; :}
+	          |
+	          decl:d 
+              {: RESULT = new ListSExp(d); :}
+              |
+	          {: RESULT = new ListSExp(); :}
+	          ;
+
+decl ::= ID:x COLON type:t
+         {: RESULT = new ListSExp(new AtomSExp(x), t); :}       
+         ;
+
+type ::= INT 
+         {: RESULT = new AtomSExp("int"); :}
+		 |
+		 BOOL
+		 {: RESULT = new AtomSExp("bool"); :}
+		 |
+		 INT LBRACKET RBRACKET
+		 {: RESULT = new ListSExp(new AtomSExp("[]"), new AtomSExp("int")); :}
+		 |
+		 INT LBRACKET expr:e RBRACKET
+		 {: RESULT =  new ListSExp(new AtomSExp("[]"), e); :}
+		 |
+		 INT LBRACKET RBRACKET LBRACKET RBRACKET
+		 {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"))); :}
+         |
+         INT LBRACKET RBRACKET LBRACKET expr:e RBRACKET
+         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e)); :}		 
+         |
+         INT LBRACKET expr:e RBRACKET LBRACKET RBRACKET
+         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int")), e); :}
+         |
+         INT LBRACKET expr:e1 RBRACKET LBRACKET expr:e2 RBRACKET
+         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e2), e1); :}
+         ;
+
+func_list ::= func_list:fl func:f
+              {: ((ListSExp) fl).add(f); RESULT = fl; :}
+              | 
+              {: RESULT = new ListSExp(); :}
+              ;        
+
+func ::= ID:x LPAREN decl_list:dl RPAREN block_expr_list:bel
+         {: RESULT = new ListSExp(new AtomSExp(x), dl, bel); :}
+         ;
+
          
-
-
