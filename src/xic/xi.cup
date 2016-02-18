@@ -86,8 +86,8 @@ terminal Integer INTEGER;
    value means that it can be any type, it isn't set to a specific
    type.  So it could be an Integer or a String or whatever. */
 non terminal SExp program, expr_list, expr, block_expr_list, use_stmt_list, use_stmt, func_list, func;
-non terminal SExp decl_list, decl, type;   
-      
+non terminal SExp decl_list, decl, type_list, type;   
+non terminal SExp expr_comma_list, array;      
 /*
   Precedence of non terminals could be defined here.  If you do define
   precedence here you won't need to worry about precedence in the
@@ -133,9 +133,18 @@ block_expr_list ::= LBRACE expr_list:el RBRACE
                     {: RESULT = el; :}
                     ;
 
+expr_comma_list ::= expr_comma_list:ecl COMMA expr:e
+                    {: ((ListSExp) ecl).add(e); RESULT = ecl; :}
+                    | 
+                    expr:e
+                    {: RESULT = new ListSExp(e); :}
+                    |
+                    {: RESULT = new ListSExp(); :}
+                    ;
+
 expr_list ::= expr_list:el expr:e
               {: ((ListSExp) el).add(e); RESULT = el; :}
-              | 
+              |
               {: RESULT = new ListSExp(); :}
               ;
 
@@ -156,7 +165,10 @@ expr ::= expr:e1 PLUS expr:e2
          |         
          ID:x EQ expr:e  
          {: RESULT = new ListSExp("=", new AtomSExp(x), e); :}
-         | 
+         |
+         decl:d EQ expr:e  
+         {: RESULT = new ListSExp("=", d, e); :}
+         |
          IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE ELSE LBRACE expr_list:alternative RBRACE
          {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
          | 
@@ -169,8 +181,17 @@ expr ::= expr:e1 PLUS expr:e2
          INTEGER:n 
          {: RESULT = new AtomSExp(Integer.toString(n)); :}
          |
+         LPAREN expr_comma_list:ecl RPAREN
+         {: RESULT = ecl; :}
+         |
          ID:x
          {: RESULT = new AtomSExp(x); :}
+         |
+         STRING:s
+         {: RESULT = new AtomSExp('"' + s + '"'); :}
+         |
+         CHARACTER:c
+         {: RESULT = new AtomSExp("'" + c + "'"); :}
          ;
 
 decl_list ::= decl_list:dl COMMA decl:d 
@@ -185,6 +206,15 @@ decl_list ::= decl_list:dl COMMA decl:d
 decl ::= ID:x COLON type:t
          {: RESULT = new ListSExp(new AtomSExp(x), t); :}       
          ;
+
+type_list ::= type_list:tl COMMA type:t
+              {: ((ListSExp) tl).add(t); RESULT = tl; :}
+              |
+              type:t 
+              {: RESULT = new ListSExp(t); :}
+              |
+              {: RESULT = new ListSExp(); :}
+              ;
 
 type ::= INT 
          {: RESULT = new AtomSExp("int"); :}
@@ -218,7 +248,10 @@ func_list ::= func_list:fl func:f
               ;        
 
 func ::= ID:x LPAREN decl_list:dl RPAREN block_expr_list:bel
-         {: RESULT = new ListSExp(new AtomSExp(x), dl, bel); :}
+         {: RESULT = new ListSExp(new AtomSExp(x), dl, new ListSExp(), bel); :}
+         |
+         ID:x LPAREN decl_list:dl RPAREN COLON LPAREN type_list:tl RPAREN block_expr_list:bel
+         {: RESULT = new ListSExp(new AtomSExp(x), dl, tl, bel); :}
          ;
 
          
