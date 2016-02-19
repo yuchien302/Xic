@@ -85,7 +85,7 @@ terminal LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET;
 
 terminal String ID, STRING, CHARACTER;
 terminal Integer INTEGER;
-
+terminal UMINUS;
 /* Non terminals used in the grammar section.  
 
    Non terminals that have an object value are listed first and then
@@ -106,7 +106,6 @@ non terminal SExp         func,          stmt,         bracket,         use_stmt
 non terminal SExp list_of_func,  list_of_stmt, list_of_bracket, list_of_use_stmt;
 non terminal SExp               block_of_stmt,                                    block_of_expr;
 
-
 non terminal ListSExp program;
 
 /*
@@ -123,11 +122,14 @@ non terminal ListSExp program;
 */
 
   precedence nonassoc ELSE;
- 
+  
+  
   precedence left COMMA, EQ; 
   precedence left LT, GT, LEQ, GEQ, EQEQ, NEQ;
   precedence left PLUS, MINUS;
-  precedence left MULTIPLY, DIVIDE, MOD, LPAREN, LBRACE; 
+  precedence left MULTIPLY, DIVIDE, MOD, LPAREN, LBRACE;
+  precedence left AND, OR, NEGATE; 
+  precedence left UMINUS;
 
 
 
@@ -173,6 +175,7 @@ id_type ::= id:x COLON type:t           {: RESULT = new ListSExp(x, t); :}
           ;
 
 expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
+       | MINUS expr:e                 {: RESULT = new ListSExp("-", e); :} %prec UMINUS
 	   | expr:e1 MINUS expr:e2        {: RESULT = new ListSExp("-", e1, e2); :}
 	   | expr:e1 MULTIPLY expr:e2     {: RESULT = new ListSExp("*", e1, e2); :}
        | expr:e1 DIVIDE expr:e2       {: RESULT = new ListSExp("/", e1, e2); :}
@@ -183,6 +186,8 @@ expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
 	   | expr:e1 LEQ expr:e2          {: RESULT = new ListSExp("<=", e1, e2); :}
 	   | expr:e1 GEQ expr:e2          {: RESULT = new ListSExp(">=", e1, e2); :}
 	   | expr:e1 NEQ expr:e2          {: RESULT = new ListSExp("!=", e1, e2); :}
+	   | expr:e1 AND expr:e2          {: RESULT = new ListSExp("&", e1, e2); :}
+       | expr:e1 OR expr:e2           {: RESULT = new ListSExp("|", e1, e2); :}
 	   | LENGTH LPAREN expr:e RPAREN  {: RESULT = new ListSExp("length", e); :}
 	   | LPAREN expr:e RPAREN         {: RESULT = e; :}
 	   | id:x array_of_expr:el        {: ((ListSExp) el).prepend(x); RESULT = el; :}
@@ -194,12 +199,11 @@ expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
 	   | FALSE                        {: RESULT = new AtomSExp("false"); :}
 	   | integer:e                    {: RESULT = e; :}
 	   | id:x                         {: RESULT = x; :}
-	   | AND expr:e                   {: RESULT = new ListSExp("&", e); :}
-	   | OR expr:e                    {: RESULT = new ListSExp("|", e); :}
 	   | NEGATE expr:e                {: RESULT = new ListSExp("!", e); :}
-	   | MINUS expr:e                 {: RESULT = new ListSExp("-", e); :}
 	   | block_of_expr:e              {: RESULT = e; :}
 	   ;
+
+
 
 comma_seperate_expr ::= comma_seperate_expr:el COMMA expr:e           
                          {: 
