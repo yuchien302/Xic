@@ -127,7 +127,7 @@ non terminal ListSExp program;
   precedence left COMMA, EQ; 
   precedence left LT, GT, LEQ, GEQ, EQEQ, NEQ;
   precedence left PLUS, MINUS;
-  precedence left MULTIPLY, DIVIDE, MOD, LPAREN; 
+  precedence left MULTIPLY, DIVIDE, MOD, LPAREN, LBRACE; 
 
 
 
@@ -186,6 +186,7 @@ expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
 	   | LENGTH LPAREN expr:e RPAREN  {: RESULT = new ListSExp("length", e); :}
 	   | LPAREN expr:e RPAREN         {: RESULT = e; :}
 	   | id:x array_of_expr:el        {: ((ListSExp) el).prepend(x); RESULT = el; :}
+	   | id:x LPAREN RPAREN           {: RESULT = new ListSExp(x); :}
 	   | id_bracket:x                 {: RESULT = x; :}
 	   | STRING:s                     {: RESULT = new AtomSExp('"' + s + '"'); :}
 	   | CHARACTER:c                  {: RESULT = new AtomSExp("'" + c + "'"); :}
@@ -264,7 +265,13 @@ assignment ::= id_bracket:el assign:e //could not reduce to ID
 
 stmt ::= IF LPAREN expr:predicate RPAREN block_of_stmt:consequent ELSE block_of_stmt:alternative
          {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
-         | 
+         |
+         IF LPAREN expr:predicate RPAREN assignment:consequent ELSE assignment:alternative
+         {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
+         |
+         IF LPAREN expr:predicate RPAREN block_of_stmt:consequent ELSE assignment:alternative
+         {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
+         |  
          IF LPAREN expr:predicate RPAREN block_of_stmt:consequent
          {: RESULT = new ListSExp("if", predicate, consequent); :}
          |
@@ -288,7 +295,19 @@ block_of_stmt ::= LBRACE list_of_stmt:el RBRACE               {: RESULT = el; :}
                         ((ListSExp) el).add(e); 
                         RESULT = el;
                     } else { 
-                        RESULT = new ListSExp(new AtomSExp("return"), el, e);
+                        ((ListSExp) el).add(new ListSExp(new AtomSExp("return"), e));
+                        RESULT = el;
+                    } 
+                :}
+                | LBRACE list_of_stmt:el RETURN comma_seperate_expr:e SEMI RBRACE
+                {: 
+                    if(e instanceof ListSExp) { 
+                        ((ListSExp) e).prepend(new AtomSExp("return"));  
+                        ((ListSExp) el).add(e); 
+                        RESULT = el;
+                    } else { 
+                        ((ListSExp) el).add(new ListSExp(new AtomSExp("return"), e));
+                        RESULT = el;
                     } 
                 :}
                 ;
@@ -330,7 +349,13 @@ func ::= id:x array_of_id_type:el1 block_of_stmt:el2
          {: RESULT = new ListSExp(x, new ListSExp(), new ListSExp(), el2); :}
          |
          id:x array_of_id_type:el1 COLON comma_seperate_type:el2 block_of_stmt:el3
-         {: RESULT = new ListSExp(x, el1, el2, el3); :}
+         {: 
+            if(el2 instanceof ListSExp) { 
+                RESULT = new ListSExp(x, el1, el2, el3); 
+            } else { 
+                RESULT = new ListSExp(x, el1, new ListSExp(el2), el3);
+            } 
+         :}
          |
          id:x LPAREN RPAREN COLON comma_seperate_type:el2 block_of_stmt:el3
          {: RESULT = new ListSExp(x, new ListSExp(), el2, el3); :}
