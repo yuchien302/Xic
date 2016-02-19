@@ -182,8 +182,15 @@ expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
 	   | id_bracket:x                 {: RESULT = x; :}
 	   | STRING:s                     {: RESULT = new AtomSExp('"' + s + '"'); :}
 	   | CHARACTER:c                  {: RESULT = new AtomSExp("'" + c + "'"); :}
+	   | TRUE                         {: RESULT = new AtomSExp("true"); :}
+	   | FALSE                        {: RESULT = new AtomSExp("false"); :}
 	   | integer:e                    {: RESULT = e; :}
 	   | id:x                         {: RESULT = x; :}
+	   | AND expr:e                   {: RESULT = new ListSExp("&", e); :}
+	   | OR expr:e                    {: RESULT = new ListSExp("|", e); :}
+	   | NEGATE expr:e                {: RESULT = new ListSExp("!", e); :}
+	   | MINUS expr:e                 {: RESULT = new ListSExp("-", e); :}
+	   | block_of_expr:e              {: RESULT = e; :}
 	   ;
 
 comma_seperate_expr ::= comma_seperate_expr:el COMMA expr:e           
@@ -224,7 +231,7 @@ comma_seperate_id_type ::= comma_seperate_id_type:el COMMA id_type:e
 
 block_of_expr    ::= LBRACE comma_seperate_expr:el RBRACE
                     {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :}
-                    | LBRACE block_of_expr:el RBRACE {: RESULT = el; :};
+                    ;
                     
 array_of_expr    ::= LPAREN comma_seperate_expr:el RPAREN
                      {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :};
@@ -236,9 +243,7 @@ array_of_id_type ::= LPAREN comma_seperate_id_type:el RPAREN
                      {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :}; 
 
 
-assign     ::= EQ block_of_expr:e   {: RESULT = e; :}
-             | EQ expr:e             {: RESULT = e; :}
-             ;
+assign     ::= EQ expr:e             {: RESULT = e; :};
 
 assignment ::= id_bracket:el assign:e //could not reduce to ID
          {: RESULT =  new ListSExp("=", el, e); :}
@@ -269,7 +274,16 @@ stmt ::= IF LPAREN expr:predicate RPAREN block_of_stmt:consequent ELSE block_of_
          ;
 
 block_of_stmt ::= LBRACE list_of_stmt:el RBRACE               {: RESULT = el; :}
-                | LBRACE list_of_stmt:el RETURN comma_seperate_expr:e RBRACE {: ((ListSExp) e).prepend(new AtomSExp("return"));  ((ListSExp) el).add(e); RESULT = el; :}
+                | LBRACE list_of_stmt:el RETURN comma_seperate_expr:e RBRACE
+                {: 
+                    if(e instanceof ListSExp) { 
+                        ((ListSExp) e).prepend(new AtomSExp("return"));  
+                        ((ListSExp) el).add(e); 
+                        RESULT = el;
+                    } else { 
+                        RESULT = new ListSExp(new AtomSExp("return"), el, e);
+                    } 
+                :}
                 ;
 
 list_of_stmt ::= list_of_stmt:el stmt:e {: ((ListSExp) el).add(e); RESULT = el; :}
