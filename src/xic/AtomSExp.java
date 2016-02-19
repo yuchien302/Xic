@@ -6,6 +6,12 @@ public class AtomSExp extends SExp {
 	public AtomSExp(String v){
 		value = v;
 	}
+	public AtomSExp(int v){
+		value = Integer.toString(v);
+	}
+	public AtomSExp(SExp v){
+		value = v.toString();
+	}
 	
 	@Override
 	public String toString(){

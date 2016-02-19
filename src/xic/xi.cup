@@ -85,9 +85,23 @@ terminal Integer INTEGER;
    non terminals that have an integer value are listed.  An object
    value means that it can be any type, it isn't set to a specific
    type.  So it could be an Integer or a String or whatever. */
-non terminal SExp program, expr_list, expr, block_expr_list, use_stmt_list, use_stmt, func_list, func;
-non terminal SExp decl_list, decl, type_list, type;   
-non terminal SExp expr_comma_list, array;      
+
+non terminal AtomSExp id, integer;
+non terminal SExp assign, assignment, id_bracket;
+
+
+non terminal SExp                type,                id_type,                 expr;
+non terminal SExp comma_seperate_type, comma_seperate_id_type,  comma_seperate_expr;   
+non terminal SExp       array_of_type,       array_of_id_type,        array_of_expr;
+
+
+non terminal SExp         func,          stmt,         bracket,         use_stmt;
+non terminal SExp list_of_func,  list_of_stmt, list_of_bracket, list_of_use_stmt;
+non terminal SExp               block_of_stmt,                                    block_of_expr;
+
+
+non terminal ListSExp program;
+
 /*
   Precedence of non terminals could be defined here.  If you do define
   precedence here you won't need to worry about precedence in the
@@ -102,10 +116,12 @@ non terminal SExp expr_comma_list, array;
 */
 
   precedence nonassoc ELSE;
-
-  precedence left EQ, LT, GT, LEQ, GEQ;
+ 
+  precedence left COMMA, EQ; 
+  precedence left LT, GT, LEQ, GEQ, EQEQ, NEQ;
   precedence left PLUS, MINUS;
-  precedence left MULTIPLY, DIVIDE, MOD; 
+  precedence left MULTIPLY, DIVIDE, MOD, LPAREN; 
+
 
 
 /* ----------------------------Grammar Section-------------------- */
@@ -117,141 +133,190 @@ non terminal SExp expr_comma_list, array;
 */
 start with program;
 
-program ::= use_stmt_list:ul func_list:funcl
-            {: RESULT = new ListSExp(ul, funcl); :};
+id      ::= ID:x                        {: RESULT = new AtomSExp(x); :};
+integer ::= INTEGER:x                   {: RESULT = new AtomSExp(x); :};
+type    ::= BOOL                        {: RESULT = new AtomSExp("bool"); :}
+          | INT                         {: RESULT = new AtomSExp("int"); :}
+          | INT LBRACKET RBRACKET
+          {: RESULT = new ListSExp(new AtomSExp("[]"), new AtomSExp("int")); :}
+          | INT LBRACKET expr:e RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e); :}
+          | INT LBRACKET RBRACKET LBRACKET RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"))); :}         
+          | INT LBRACKET expr:e RBRACKET LBRACKET RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int")), e); :}
+          | INT LBRACKET expr:e1 RBRACKET LBRACKET expr:e2 RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e2), e1); :}
+          ;
 
-use_stmt_list ::= use_stmt_list:ul use_stmt:u
-                  {: ((ListSExp) ul).add(u); RESULT = ul; :}
-                  |
-                  {: RESULT = new ListSExp(); :}
-                  ;
+id_bracket ::= id:x LBRACKET RBRACKET
+          {: RESULT = new ListSExp(new AtomSExp("[]"), x); :}
+          | id:x LBRACKET expr:e RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), x, e); :}
+          | id:x LBRACKET RBRACKET LBRACKET RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), x)); :}         
+          | id:x LBRACKET expr:e RBRACKET LBRACKET RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), x), e); :}
+          | id:x LBRACKET expr:e1 RBRACKET LBRACKET expr:e2 RBRACKET
+          {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), x, e2), e1); :}
+          ;
+          
+id_type ::= id:x COLON type:t           {: RESULT = new ListSExp(x, t); :}
+          | UNDERSCORE                  {: RESULT = new AtomSExp("_"); :}
+          ;
 
-use_stmt ::= USE ID:x
-             {: RESULT = new ListSExp("use", new AtomSExp(x)); :};
+expr ::= expr:e1 PLUS expr:e2         {: RESULT = new ListSExp("+", e1, e2); :}
+	   | expr:e1 MINUS expr:e2        {: RESULT = new ListSExp("-", e1, e2); :}
+	   | expr:e1 MULTIPLY expr:e2     {: RESULT = new ListSExp("*", e1, e2); :}
+       | expr:e1 DIVIDE expr:e2       {: RESULT = new ListSExp("/", e1, e2); :}
+	   | expr:e1 MOD expr:e2          {: RESULT = new ListSExp("%", e1, e2); :}
+	   | expr:e1 LT expr:e2           {: RESULT = new ListSExp("<", e1, e2); :}
+	   | expr:e1 GT expr:e2           {: RESULT = new ListSExp(">", e1, e2); :}
+	   | expr:e1 EQEQ expr:e2         {: RESULT = new ListSExp("==", e1, e2); :}
+	   | expr:e1 LEQ expr:e2          {: RESULT = new ListSExp("<=", e1, e2); :}
+	   | expr:e1 GEQ expr:e2          {: RESULT = new ListSExp(">=", e1, e2); :}
+	   | expr:e1 NEQ expr:e2          {: RESULT = new ListSExp("!=", e1, e2); :}
+	   | LENGTH LPAREN expr:e RPAREN  {: RESULT = new ListSExp("length", e); :}
+	   | LPAREN expr:e RPAREN         {: RESULT = e; :}
+	   | id:x array_of_expr:el        {: ((ListSExp) el).prepend(x); RESULT = el; :}
+	   | id_bracket:x                 {: RESULT = x; :}
+	   | STRING:s                     {: RESULT = new AtomSExp('"' + s + '"'); :}
+	   | CHARACTER:c                  {: RESULT = new AtomSExp("'" + c + "'"); :}
+	   | integer:e                    {: RESULT = e; :}
+	   | id:x                         {: RESULT = x; :}
+	   ;
 
-block_expr_list ::= LBRACE expr_list:el RBRACE
-                    {: RESULT = el; :}
-                    ;
+comma_seperate_expr ::= comma_seperate_expr:el COMMA expr:e           
+                         {: 
+                            if(el instanceof ListSExp) { 
+                                ((ListSExp) el).add(e); 
+                                RESULT = el;
+                            } else { 
+                                RESULT = new ListSExp(el, e);
+                            }
+                         :}
+                         | expr:e {: RESULT = new AtomSExp(e); :}
+                         ;
 
-expr_comma_list ::= expr_comma_list:ecl COMMA expr:e
-                    {: ((ListSExp) ecl).add(e); RESULT = ecl; :}
-                    | 
-                    expr:e
-                    {: RESULT = new ListSExp(e); :}
-                    |
-                    {: RESULT = new ListSExp(); :}
-                    ;
+comma_seperate_type    ::= comma_seperate_type:el COMMA type:e
+                         {: 
+                            if(el instanceof ListSExp) { 
+                                ((ListSExp) el).add(e); 
+                                RESULT = el;
+                            } else { 
+                                RESULT = new ListSExp(el, e);
+                            }
+                         :}
+                         | type:e {: RESULT = new AtomSExp(e); :}
+                         ;
+                           
+comma_seperate_id_type ::= comma_seperate_id_type:el COMMA id_type:e  
+                         {: 
+                            if(el instanceof ListSExp) { 
+                                ((ListSExp) el).add(e); 
+                                RESULT = el;
+                            } else { 
+                                RESULT = new ListSExp(el, e);
+                            }
+                         :}
+                         | id_type:e {: RESULT = new AtomSExp(e); :}
+                         ;
 
-expr_list ::= expr_list:el expr:e
-              {: ((ListSExp) el).add(e); RESULT = el; :}
-              |
-              {: RESULT = new ListSExp(); :}
-              ;
+block_of_expr    ::= LBRACE comma_seperate_expr:el RBRACE
+                    {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :}
+                    | LBRACE block_of_expr:el RBRACE {: RESULT = el; :};
+                    
+array_of_expr    ::= LPAREN comma_seperate_expr:el RPAREN
+                     {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :};
+                     
+array_of_type    ::= LPAREN comma_seperate_type:el RPAREN
+                     {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :};
 
-expr ::= expr:e1 PLUS expr:e2
-         {: RESULT = new ListSExp("+", e1, e2); :}
+array_of_id_type ::= LPAREN comma_seperate_id_type:el RPAREN                             
+                     {: if(el instanceof ListSExp) RESULT = el; else RESULT = new ListSExp(el); :}; 
+
+
+assign     ::= EQ block_of_expr:e   {: RESULT = e; :}
+             | EQ expr:e             {: RESULT = e; :}
+             ;
+
+assignment ::= id_bracket:el assign:e //could not reduce to ID
+         {: RESULT =  new ListSExp("=", el, e); :}
          |
-         expr:e1 MINUS expr:e2
-         {: RESULT = new ListSExp("-", e1, e2); :}
+         id:el assign:e //could not reduce to ID
+         {: RESULT =  new ListSExp("=", el, e); :}         
          |
-         expr:e1 MULTIPLY expr:e2
-         {: RESULT = new ListSExp("*", e1, e2); :}
-         |
-         expr:e1 DIVIDE expr:e2
-         {: RESULT = new ListSExp("/", e1, e2); :}
-         |
-         expr:e1 MOD expr:e2
-         {: RESULT = new ListSExp("%", e1, e2); :}
-         |         
-         ID:x EQ expr:e  
-         {: RESULT = new ListSExp("=", new AtomSExp(x), e); :}
-         |
-         decl:d EQ expr:e  
-         {: RESULT = new ListSExp("=", d, e); :}
-         |
-         IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE ELSE LBRACE expr_list:alternative RBRACE
+         comma_seperate_id_type:el assign:e //could not reduce to ID
+         {: RESULT = new ListSExp("=", el, e); :}
+         ;
+
+stmt ::= IF LPAREN expr:predicate RPAREN block_of_stmt:consequent ELSE block_of_stmt:alternative
          {: RESULT = new ListSExp("if", predicate, consequent, alternative); :}
          | 
-         IF LPAREN expr:predicate RPAREN LBRACE expr_list:consequent RBRACE
+         IF LPAREN expr:predicate RPAREN block_of_stmt:consequent
          {: RESULT = new ListSExp("if", predicate, consequent); :}
          |
-         expr:x SEMI
-         {: RESULT = x; :}
+         WHILE LPAREN expr:predicate RPAREN block_of_stmt:consequent
+         {: RESULT = new ListSExp("while", predicate, consequent); :}
          |
-         INTEGER:n 
-         {: RESULT = new AtomSExp(Integer.toString(n)); :}
+         stmt:x SEMI {: RESULT = x; :}
          |
-         LPAREN expr_comma_list:ecl RPAREN
-         {: RESULT = ecl; :}
+         expr:x {: RESULT = x; :}
          |
-         ID:x
-         {: RESULT = new AtomSExp(x); :}
+         assignment:e {: RESULT = e; :}
          |
-         STRING:s
-         {: RESULT = new AtomSExp('"' + s + '"'); :}
-         |
-         CHARACTER:c
-         {: RESULT = new AtomSExp("'" + c + "'"); :}
+         comma_seperate_id_type:el {: RESULT = el; :}
          ;
 
-decl_list ::= decl_list:dl COMMA decl:d 
-	          {: ((ListSExp) dl).add(d); RESULT = dl; :}
-	          |
-	          decl:d 
-              {: RESULT = new ListSExp(d); :}
-              |
-	          {: RESULT = new ListSExp(); :}
-	          ;
+block_of_stmt ::= LBRACE list_of_stmt:el RBRACE               {: RESULT = el; :}
+                | LBRACE list_of_stmt:el RETURN comma_seperate_expr:e RBRACE {: ((ListSExp) e).prepend(new AtomSExp("return"));  ((ListSExp) el).add(e); RESULT = el; :}
+                ;
 
-decl ::= ID:x COLON type:t
-         {: RESULT = new ListSExp(new AtomSExp(x), t); :}       
-         ;
-
-type_list ::= type_list:tl COMMA type:t
-              {: ((ListSExp) tl).add(t); RESULT = tl; :}
-              |
-              type:t 
-              {: RESULT = new ListSExp(t); :}
-              |
-              {: RESULT = new ListSExp(); :}
+list_of_stmt ::= list_of_stmt:el stmt:e {: ((ListSExp) el).add(e); RESULT = el; :}
+              |                         {: RESULT = new ListSExp(); :}
               ;
 
-type ::= INT 
-         {: RESULT = new AtomSExp("int"); :}
-		 |
-		 BOOL
-		 {: RESULT = new AtomSExp("bool"); :}
-		 |
-		 INT LBRACKET RBRACKET
-		 {: RESULT = new ListSExp(new AtomSExp("[]"), new AtomSExp("int")); :}
-		 |
-		 INT LBRACKET expr:e RBRACKET
-		 {: RESULT =  new ListSExp(new AtomSExp("[]"), e); :}
-		 |
-		 INT LBRACKET RBRACKET LBRACKET RBRACKET
-		 {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"))); :}
-         |
-         INT LBRACKET RBRACKET LBRACKET expr:e RBRACKET
-         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e)); :}		 
-         |
-         INT LBRACKET expr:e RBRACKET LBRACKET RBRACKET
-         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int")), e); :}
-         |
-         INT LBRACKET expr:e1 RBRACKET LBRACKET expr:e2 RBRACKET
-         {: RESULT =  new ListSExp(new AtomSExp("[]"), new ListSExp(new AtomSExp("[]"), new AtomSExp("int"), e2), e1); :}
-         ;
 
-func_list ::= func_list:fl func:f
+list_of_bracket ::= list_of_bracket:el bracket:e 
+                           {: ((ListSExp) el).add(e); RESULT = el; :}
+                           | {: RESULT = new ListSExp(); :}
+                           ;
+
+
+bracket ::= LBRACKET expr:e RBRACKET {: RESULT = new ListSExp("[]", e); :}
+          | LBRACKET RBRACKET {: RESULT = new AtomSExp("[]"); :}
+          ;
+
+
+use_stmt ::= USE id:x    {: RESULT = new ListSExp("use", x); :};
+         
+
+               
+list_of_func ::= list_of_func:fl func:f
               {: ((ListSExp) fl).add(f); RESULT = fl; :}
               | 
               {: RESULT = new ListSExp(); :}
               ;        
 
-func ::= ID:x LPAREN decl_list:dl RPAREN block_expr_list:bel
-         {: RESULT = new ListSExp(new AtomSExp(x), dl, new ListSExp(), bel); :}
+list_of_use_stmt ::= list_of_use_stmt:ul use_stmt:u    {: ((ListSExp) ul).add(u); RESULT = ul; :}
+                  |                                    {: RESULT = new ListSExp(); :}
+                  ;
+
+func ::= id:x array_of_id_type:el1 block_of_stmt:el2
+         {: RESULT = new ListSExp(x, el1, new ListSExp(), el2); :}
          |
-         ID:x LPAREN decl_list:dl RPAREN COLON LPAREN type_list:tl RPAREN block_expr_list:bel
-         {: RESULT = new ListSExp(new AtomSExp(x), dl, tl, bel); :}
+         id:x LPAREN RPAREN block_of_stmt:el2
+         {: RESULT = new ListSExp(x, new ListSExp(), new ListSExp(), el2); :}
+         |
+         id:x array_of_id_type:el1 COLON comma_seperate_type:el2 block_of_stmt:el3
+         {: RESULT = new ListSExp(x, el1, el2, el3); :}
+         |
+         id:x LPAREN RPAREN COLON comma_seperate_type:el2 block_of_stmt:el3
+         {: RESULT = new ListSExp(x, new ListSExp(), el2, el3); :}
          ;
 
+
+
+program ::= list_of_use_stmt:ul list_of_func:funcl
+            {: RESULT = new ListSExp(ul, funcl); :};
          
