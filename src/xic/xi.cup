@@ -1,7 +1,7 @@
 package xic;
 
 import java_cup.runtime.*;
-
+import java_cup.runtime.ComplexSymbolFactory.ComplexSymbol;
    
 /* Parser code to change the way the parser reports errors (include
    line and column number of the error). */
@@ -11,6 +11,12 @@ parser code {:
        column of where the error occurred in the input as well as the
        reason for the error which is passed into the method in the
        String 'message'. */
+
+    public void syntax_error(Symbol cur_token) {
+        ComplexSymbol tok = (ComplexSymbol) cur_token;
+        String line = String.format("%d:%d error:Unexpected token %s", tok.getLeft().getLine(), tok.getLeft().getColumn(), tok.getName());
+        throw new Error(line);
+    }
     public void report_error(String message, Object info) {
    
         /* Create a StringBuilder called 'm' with the string 'Error' in it. */
@@ -45,7 +51,7 @@ parser code {:
    
         /* Print the contents of the StringBuilder 'm', which contains
            an error message, out on a line. */
-        System.err.println(m);
+        /*System.out.println(m);*/
     }
    
     /* Change the method report_fatal_error so when it reports a fatal
@@ -55,7 +61,8 @@ parser code {:
        'message' and then exit.*/
     public void report_fatal_error(String message, Object info) {
         report_error(message, info);
-        System.exit(1);
+        return;
+        /*System.exit(1);*/
     }
 :};
    

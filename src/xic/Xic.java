@@ -72,9 +72,15 @@ public class Xic {
 				Lexer lexer = new Lexer(fr);
 				FileWriter fw = new FileWriter(pathParsed);
 				parser p = new parser(lexer);
-				String program = p.parse().value.toString();
-				if(commandLine.hasOption("v")){ System.out.print(program); } 
-				fw.write(program);
+				try{
+					String program = p.parse().value.toString();
+					if(commandLine.hasOption("v")){ System.out.print(program); }
+					fw.write(program);
+				} catch(Error e) {
+					if(commandLine.hasOption("v")){ System.out.print(e.getMessage()); }
+					fw.write(e.getMessage());
+				}
+				
 	            fw.close();
 			}	
 		}		
